@@ -1,6 +1,7 @@
 import os
 import httpx
 from decimal import Decimal, ROUND_HALF_UP
+import logging
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Query, HTTPException
@@ -12,6 +13,11 @@ from typing import Annotated
 
 load_dotenv()
 api_key = os.getenv('API_CODE')
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
 
 CURRENCY_RATES_SERVICE_URL_SCHEME = "https://v6.exchangerate-api.com/v6/{api_key}/latest/{from_currency}"
 app = FastAPI()
@@ -37,6 +43,9 @@ class FilterParams(BaseModel):
 
 @app.get("/api/rates")
 async def convert_currency(filtered_query: Annotated[FilterParams, Query()]):
+    logging.info(
+        f"Converting {filtered_query.value} from {filtered_query.from_currency} to {filtered_query.to_currency}"
+        )
     try:
         async with httpx.AsyncClient() as client:
             response = await client.get(
@@ -56,18 +65,20 @@ async def convert_currency(filtered_query: Annotated[FilterParams, Query()]):
             raise HTTPException(status_code=404, detail="The currency was not found in the vendor API")
 
         rate = exchange_rates[filtered_query.to_currency]
-        # print(f'rate {rate}')
+        logging.info(f'rate {rate}')
         precise_rate = Decimal(str(rate))
-        # print(f'precise_rate {precise_rate}')
+        logging.info(f'precise_rate {precise_rate}')
         rounded_precise_rate = precise_rate.quantize(Decimal('0.00'), rounding=ROUND_HALF_UP)
-        # print(f'rounded_precise_rate {rounded_precise_rate}')
+        logging.info(f'rounded_precise_rate {rounded_precise_rate}')
         result = float(rounded_precise_rate * filtered_query.value)
         return JSONResponse(
             content={"result": result},
             )
 
     except httpx.HTTPStatusError as e:
+        logging.error(f"HTTP error occurred: {e.response.status_code} - {e.response.text}")
         raise HTTPException(status_code=e.response.status_code, detail="Failed to fetch exchange rates")
     except Exception as e:
+        logging.exception("An unexpected error occurred")
         raise HTTPException(status_code=500, detail=str(e))
 

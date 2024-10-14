@@ -38,7 +38,7 @@ To get started with this project, follow these steps:
 1. Clone the repository:
 
     ```bash
-    git clone https://github.com/MalyshevDenSer/currency-conversion-api.git
+    git clone https://github.com/MalyshevDenSer/currency-converter-api.git
     cd currency-conversion-api
     ```
 
